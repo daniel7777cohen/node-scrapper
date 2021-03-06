@@ -1,3 +1,5 @@
+const readline = require('readline');
+
 const askQuestion = (query) => {
   const rl = readline.createInterface({
     input: process.stdin,
