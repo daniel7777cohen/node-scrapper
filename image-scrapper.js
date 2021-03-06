@@ -7,13 +7,13 @@ const { getImagesFromWebUrl } = require('./utils/get-images');
 
 (async () => {
   try {
-    let url = await askQuestion(
+    let webUrl = await askQuestion(
       'Please enter a valid url , e.g www.google.com \n'
     );
-    if (!url.startsWith('http://')) url = 'http://' + url;
-    console.log(`url is ${url}`);
-    const path = await askQuestion('Please enter a valid path \n');
-    console.log(`path is ${path}`);
+    if (!webUrl.startsWith('http://')) webUrl = 'http://' + webUrl;
+    console.log(`url is ${webUrl}`);
+    const dest = await askQuestion('Please enter a valid path \n');
+    console.log(`path is ${dest}`);
 
     // let webUrl = 'https://www.mako.com';
     // let dest = __dirname;
