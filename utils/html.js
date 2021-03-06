@@ -56,7 +56,7 @@ const writeHtmlFile = async (dest, htmlContent, imageUrls, url) => {
     if (error) {
       console.log(error);
     } else {
-      console.log(`${dest}/${htmlFileName}-index.html-index.html created`);
+      console.log(`${dest}/${htmlFileName}-index.html created`);
     }
   });
 };

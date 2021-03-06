@@ -23,6 +23,7 @@ const { getImagesFromWebUrl } = require('./utils/get-images');
         const imageUrls = getImagesFromWebUrl(html).filter(
           (url) => url !== 'undefined'
         );
+        console.log(imageUrls);
         await downloadImages(imageUrls, dest);
         const htmlContent = getHtmlContent();
         await writeHtmlFile(dest, htmlContent, imageUrls, webUrl);
