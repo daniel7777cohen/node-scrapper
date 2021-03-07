@@ -5,21 +5,22 @@ const { downloadImages } = require('./utils/download-images.js');
 const { getUserInput } = require('./utils/user-input');
 const { getImagesFromWebUrl } = require('./utils/get-images');
 
-const main = async() => {
+const main = async () => {
   try {
     let webUrl = await getUserInput(
       'Please enter a valid url , e.g www.google.com \n'
     );
-    if (!webUrl.startsWith('http://')) webUrl = 'http://' + webUrl;
+    if (!webUrl.startsWith('https://')) {
+      webUrl = 'https://' + webUrl;
+    }
     console.log(`url is ${webUrl}`);
     const dest = await getUserInput('Please enter a valid path \n');
     console.log(`path is ${dest}`);
 
-  
     request(webUrl, async (error, response, html) => {
       if (error) console.error(error);
       else {
-        const imageUrls = getImagesFromWebUrl(html)
+        const imageUrls = getImagesFromWebUrl(html);
         await downloadImages(imageUrls, dest);
         const htmlContent = getHtmlContent();
         await writeHtmlFile(dest, htmlContent, imageUrls, webUrl);
