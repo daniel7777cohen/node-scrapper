@@ -1,71 +1,122 @@
 const probe = require('probe-image-size');
 const cheerio = require('cheerio');
 const fs = require('fs');
+const sizeOf = require('image-size');
+const sharp = require('sharp');
+const { isBase64Url, getSlicedBase64 } = require('./common');
 
-const getHeight = (width, height) => {
-  const orgHeightProportion = height / width;
-  return width >= 120 ? orgHeightProportion * 120 : orgHeightProportion * width;
-};
-
-const updatedGrid = async (grid, imageUrls) => {
-  for (const imgUrl of imageUrls) {
-    if (imgUrl.startsWith('https://')) {
-      try {
-        console.log(`getting info for ${imgUrl}`);
-        const { width, height, type } = await probe(imgUrl);
-        let calculatedHeight = getHeight(width, height);
-
-        grid.append(
-          `
-              <div class="grid-item">
-              <img src=${imgUrl} loading=lazy height=${calculatedHeight} alt="img" width=${width} class="gallery__img-1">
-               <div class="originalDetails">
-                <ul>
-                  <li> <a href=${imgUrl} target=_blank>View Original Image</a></li>
-                  <li><span>Original Width : ${width}</span></li>
-                  <li><span>Original Height : ${height}</span></li>
-                  <li><span>Type : ${type}</span></li>
-                </ul></div></div>`
-        );
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  }
-  return grid;
-};
-
-const getHtmlFileName = (url) => {
-  // https://www.google.com
-  const splitedUrl = url.split('.');
-  return splitedUrl[1];
-};
-
-const writeHtmlFile = async (dest, htmlContent, imageUrls, url) => {
+const writeHtmlFile = async (dest, htmlContent, imageUrls, webUrl) => {
   const $ = cheerio.load(htmlContent);
   const header = $(`.header`);
   const grid = $(`.grid`);
 
-  header.prepend(`<h1>Scraped Images From ${url}</h1>`);
-
+  header.prepend(`<h1>Scraped Images From ${webUrl}</h1>`);
   await updatedGrid(grid, imageUrls);
   const newHtml = $.html();
-  const htmlFileName = getHtmlFileName(url);
+
+  const htmlFileName = getHtmlFileName(webUrl);
   console.log('writing content to html file...');
   fs.writeFile(`${dest}/${htmlFileName}-index.html`, newHtml, (error) => {
     if (error) {
-      console.log(error);
+      console.error(error);
     } else {
       console.log(`${dest}/${htmlFileName}-index.html created`);
     }
   });
 };
 
+const updatedGrid = async (grid, imageUrls) => {
+  let processedHeight;
+  let processedWidth;
+
+  for (const imgUrl of imageUrls) {
+    if (imgUrl.startsWith('https://')) {
+      try {
+        console.log(`getting info of ${imgUrl}`);
+        const { width, height, type } = await probe(imgUrl);
+
+        processedWidth = width > 120 ? 120 : width;
+        processedHeight = getProcessedHeight(width, height);
+
+        grid.append(
+          ` <div class="grid-item">
+              <img src=${imgUrl} loading=lazy height=${processedHeight} alt="img" width=${processedWidth} class="gallery">
+               <div class="originalDetails">
+                <ul>
+                  <li> <a href=${imgUrl} target=_blank>View Original Image</a></li>
+                  <li><span>Original Width : ${width}</span></li>
+                  <li><span>Original Height : ${height}</span></li>
+                  <li><span>Type : ${type}</span></li>
+                </ul>
+               </div>
+            </div>`
+        );
+      } catch (error) {
+        console.error(error);
+      }
+    } else if (isBase64Url(imgUrl)) {
+      console.log(`getting info for a base64 url`);
+      const slicedBase64 = getSlicedBase64(imgUrl);
+      const img = Buffer.from(slicedBase64, 'base64');
+      const { width, height } = sizeOf(img);
+
+      processedWidth = width > 120 ? 120 : width;
+      processedHeight = getProcessedHeight(width, height);
+
+      const resizedBase64 = getResizedBase64(
+        imgUrl,
+        processedWidth,
+        processedHeight
+      );
+      grid.append(
+        `
+            <div class="grid-item">
+            <img src=${resizedBase64} loading=lazy height=${processedHeight} alt="img" width=${processedWidth} class="gallery">
+             <div class="originalDetails">
+              <ul>
+                  <li> <a href=${imgUrl} target=_blank download \>View Original Image</a></li>
+                <li><span>Original Width : ${width}</span></li>
+                <li><span>Original Height : ${height}</span></li>
+                <li><span>Type : base64</span></li>
+              </ul></div></div>`
+      );
+    }
+  }
+};
+const getProcessedHeight = (width, height) => {
+  const orgHeightProportion = height / width;
+  const processedHeight =
+    width >= 120 ? orgHeightProportion * 120 : orgHeightProportion * width;
+  return Math.round(processedHeight);
+};
+
+
+const getResizedBase64 = async (imgUrl, processedWidth, processedHeight) => {
+  const parts = imgUrl.split(';');
+  const mimType = parts[0].split(':')[1];
+  const imageData = parts[1].split(',')[1];
+
+  const imgBuffer = new Buffer(imageData, 'base64');
+  const resizedImageBuffer = await sharp(imgBuffer)
+    .resize(processedWidth, processedHeight)
+    .toBuffer()
+    .catch((error) => {
+      // error handeling
+      console.error(error);
+    });
+  let resizedImageData = resizedImageBuffer.toString('base64');
+  return `data:${mimType};base64,${resizedImageData}`;
+};
+
+const getHtmlFileName = (webUrl) => {
+  const splitedUrl = webUrl.split('.');
+  return splitedUrl[1];
+};
+
 const getHtmlContent = () => `
 <!DOCTYPE html>
 <html>
 <head>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
 <style>
 
@@ -95,7 +146,7 @@ const getHtmlContent = () => `
   align-items: center;
   padding:20px;
 }
-.gallery__img-1 {
+.gallery {
   max-width:120px;
   margin:15px 0;
 }

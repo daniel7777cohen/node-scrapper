@@ -1,6 +1,6 @@
 const readline = require('readline');
 
-const askQuestion = (query) => {
+const getUserInput = (query) => {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -13,4 +13,4 @@ const askQuestion = (query) => {
   );
 };
 
-module.exports = { askQuestion };
+module.exports = { getUserInput };
