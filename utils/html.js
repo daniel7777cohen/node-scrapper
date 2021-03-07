@@ -38,19 +38,17 @@ const updatedGrid = async (grid, imageUrls) => {
         processedWidth = width > 120 ? 120 : width;
         processedHeight = getProcessedHeight(width, height);
 
-        grid.append(
-          ` <div class="grid-item">
-              <img src=${imgUrl} loading=lazy height=${processedHeight} alt="img" width=${processedWidth} class="gallery">
-               <div class="originalDetails">
-                <ul>
-                  <li> <a href=${imgUrl} target=_blank>View Original Image</a></li>
-                  <li><span>Original Width : ${width}</span></li>
-                  <li><span>Original Height : ${height}</span></li>
-                  <li><span>Type : ${type}</span></li>
-                </ul>
-               </div>
-            </div>`
-        );
+        const gridData = {
+          src: imgUrl,
+          height,
+          width,
+          imgUrl,
+          processedWidth,
+          processedHeight,
+          type,
+        };
+
+        appendDataToGrid(grid, gridData);
       } catch (error) {
         console.error(error);
       }
@@ -68,28 +66,45 @@ const updatedGrid = async (grid, imageUrls) => {
         processedWidth,
         processedHeight
       );
-      grid.append(
-        `
-            <div class="grid-item">
-            <img src=${resizedBase64} loading=lazy height=${processedHeight} alt="img" width=${processedWidth} class="gallery">
-             <div class="originalDetails">
-              <ul>
-                  <li> <a href=${imgUrl} target=_blank download \>View Original Image</a></li>
-                <li><span>Original Width : ${width}</span></li>
-                <li><span>Original Height : ${height}</span></li>
-                <li><span>Type : base64</span></li>
-              </ul></div></div>`
-      );
+      const gridData = {
+        src: resizedBase64,
+        height,
+        width,
+        imgUrl,
+        processedWidth,
+        processedHeight,
+        type: 'base64',
+      };
+
+      appendDataToGrid(grid, gridData);
     }
   }
 };
+
+const appendDataToGrid = (
+  grid,
+  { src, height, width, imgUrl, processedWidth, processedHeight, type }
+) => {
+  grid.append(
+    `
+        <div class="grid-item">
+        <img src=${src} loading=lazy height=${processedHeight} alt="img" width=${processedWidth} class="gallery">
+         <div class="originalDetails">
+          <ul>
+              <li> <a href=${imgUrl} target=_blank download \>View Original Image</a></li>
+            <li><span>Original Width : ${width}</span></li>
+            <li><span>Original Height : ${height}</span></li>
+            <li><span>Type : ${type}</span></li>
+          </ul></div></div>`
+  );
+};
+
 const getProcessedHeight = (width, height) => {
   const orgHeightProportion = height / width;
   const processedHeight =
     width >= 120 ? orgHeightProportion * 120 : orgHeightProportion * width;
   return Math.round(processedHeight);
 };
-
 
 const getResizedBase64 = async (imgUrl, processedWidth, processedHeight) => {
   const parts = imgUrl.split(';');
@@ -101,7 +116,6 @@ const getResizedBase64 = async (imgUrl, processedWidth, processedHeight) => {
     .resize(processedWidth, processedHeight)
     .toBuffer()
     .catch((error) => {
-      // error handeling
       console.error(error);
     });
   let resizedImageData = resizedImageBuffer.toString('base64');
